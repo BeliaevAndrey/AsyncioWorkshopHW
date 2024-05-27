@@ -6,9 +6,7 @@ HOST = '127.0.0.1'
 PORT = 8020
 
 
-
 def server_run():
-
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind((HOST, PORT))
