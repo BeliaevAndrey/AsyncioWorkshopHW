@@ -19,10 +19,17 @@ def server_run():
                 print(f"Connected by {client_address}")
                 while True:
                     data = client_socket.recv(512)
+
+                    if data == b'\xff\xf4\xff\xfd\x06':     # in case of telnet
+                        break   # closed in finally
+
                     if not data:
                         break
+
                     print(f"Received data: {data.decode()}")
-                    client_socket.sendall(b'success')
+                    echo = f"echo: {data.decode('utf-8')}\t"
+                    client_socket.sendall(echo.encode())
+                    client_socket.sendall(b'success\n')
 
             except ConnectionResetError:
                 print(f"Connection reset by {client_address}")

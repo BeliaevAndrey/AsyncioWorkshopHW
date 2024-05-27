@@ -9,10 +9,13 @@ PORT = 8020
 def ping_out(host=HOST, port=PORT):
     def read_and_send_msg():
         while (msg := input("Input message: ")) != "STOP":
-            client_socket.sendall(message.encode('utf-8'))
+            client_socket.sendall(msg.encode('utf-8'))
             print(f"Sent: {msg}")
             response = client_socket.recv(1024)
             print(f"Received: {response.decode('utf-8')}")
+            response = client_socket.recv(1024)
+            print(f"Received: {response.decode('utf-8')}")
+
 
     print(f'{host} {port}')
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
