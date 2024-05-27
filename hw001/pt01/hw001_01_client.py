@@ -30,15 +30,27 @@ def ping_out(host=HOST, port=PORT):
             return 1
 
 
-if __name__ == '__main__':
+def starter():
+
+    parser = argparse.ArgumentParser(description="Client-server simple pair. Client part")
+    parser.add_argument('-p', type=int, dest='port', default=8020,
+                        help='A number of port to poll (8020 by default)')
+    parser.add_argument('-a', type=str, dest='address',  default='127.0.0.1',
+                        help='Address of server part. (127.0.0.1 by default)')
+
+    args = parser.parse_args()
+    if not re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.(\d){1,3}$", args.address):
+        print("Wrong parameter: a -- must be an IPv4 address strictly.")
+        exit(1)
+    print(f'host address: {args.port}, port: {args.address}')
 
     flag = -1
-    address = "192.168.20.144"
-    if not re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.(\d){1,3}$", address):
-        print('WRONG')
-        exit(1)
-    else:
-        print(address)
-
     while flag == -1:
-        flag = ping_out()
+        flag = ping_out(args.address, args.port)
+    else:
+        print("Exiting...")
+
+
+if __name__ == '__main__':
+    starter()
+
