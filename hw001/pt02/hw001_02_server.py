@@ -1,12 +1,14 @@
 """Simple socket server with infinite listening"""
 
 import socket
+from datetime import datetime as dt
 
 HOST = '127.0.0.1'
 PORT = 8020
 
 
 def server_run():
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind((HOST, PORT))
@@ -27,7 +29,10 @@ def server_run():
                         break
 
                     print(f"Received data: {data.decode()}")
-                    echo = f"echo: {data.decode('utf-8')}\t"
+
+                    time_rcv = dt.now().strftime("received at: %Y-%m-%d %H:%M:%S\n")
+
+                    echo = f"{time_rcv}echo: {data.decode('utf-8')}\t"
                     client_socket.sendall(echo.encode())
                     client_socket.sendall(b'success\n')
 
