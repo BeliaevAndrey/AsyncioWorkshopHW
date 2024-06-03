@@ -148,11 +148,15 @@ def data_sender(connection: socket.socket, file_name: str) -> int:
 
     connection.send(file_string)
     confirm = connection.recv(CHUNK_SIZE)
+    print(f'{confirm = }')
     if confirm != b'READY':
         return 0
 
     with open(file_path, 'rb') as f_in:
         data_to_send = f_in.read()
+
+    if file_size == 0:
+        connection.send(b'THIS FILE ON SERVER IS EMPTY.')
 
     for i in range(0, file_size, CHUNK_SIZE):
         portion = data_to_send[i:i + CHUNK_SIZE]

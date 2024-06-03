@@ -125,8 +125,8 @@ def send(host_addr: str, host_port: int):
 
         file_size = int(file_string[-1])
 
-        if short_answer('Crash test?'):
-            crash_test(client_socket)
+        # if short_answer('Crash test?'):
+        #     crash_test(client_socket)
 
         while True:
             data = client_socket.recv(CHUNK_SIZE)
