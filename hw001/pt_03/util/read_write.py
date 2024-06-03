@@ -36,7 +36,7 @@ def write_file(data: bytes,
         :param data:      bytes     -- a data pack to write
         :param file_name: str       -- file name
         :param file_dir:  str       -- path to file, default = '.'
-        :param append_flag: bool    -- open for write of append
+        :param append_flag: bool    -- open for write or append
         :return None
         """
     # write_mode = ['wb', 'ab'][append_flag]
