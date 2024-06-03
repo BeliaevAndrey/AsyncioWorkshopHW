@@ -1,5 +1,6 @@
 import socket
 import os
+import traceback
 
 from util import *
 
@@ -19,6 +20,7 @@ def listener(host_addr: str, host_port: int):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind((host_addr, host_port))
+        print(f'{server_socket.gettimeout() = }')
         server_socket.listen()
 
         print(f'Server listens to {host_addr}:{host_port}')
@@ -41,15 +43,19 @@ def listener(host_addr: str, host_port: int):
                         match command_num:
                             case '1':  # file list
                                 send_file_list(connection)
+
                             case '2':  # upload
                                 data_receiver(connection)
+
                             case '3':  # download
                                 if not command_suf:
                                     send_file_list(connection)
                                 data_sender(connection, *command_suf)
+
                             case '4':  # leave
                                 connection.close()
                                 break
+
                             case 'EXIT':  # leave
                                 connection.close()
                                 break
@@ -60,8 +66,10 @@ def listener(host_addr: str, host_port: int):
                         break
 
             except Exception as exc:
-                print(f'\033[31mERROR: {exc.__class__.__name__} {exc}\033[0m')
-                raise exc
+                print(f'\033[31mERROR: {exc.__class__.__name__}\n{exc}\033[0m')
+                # print(exc.__traceback__)
+                traceback.print_tb(exc.__traceback__)
+
             finally:
                 connection.close()
 
@@ -87,14 +95,16 @@ def data_receiver(connection: socket.socket):
     append_flag: bool = False
 
     while True:
+        connection.settimeout(10)
         data = connection.recv(CHUNK_SIZE)
-        print(f'{len(data)}')
+
         if data.startswith(b'FILE:'):
             file_name, file_size = data.decode().split(':')[1:]
             file_size = int(file_size)
             print(f'{file_name=}\n{file_size=}')
             bytes_exist = check_if_present(file_name)
             if bytes_exist == file_size:
+                print(f'File {file_name} exists')
                 request = (f'file exists, size: {bytes_exist}\n'
                            f'Rewrite? (y/n)').encode()
                 connection.send(request)
@@ -102,6 +112,7 @@ def data_receiver(connection: socket.socket):
                 if data.decode('utf-8') in 'Nn':
                     return
             elif bytes_exist and bytes_exist < file_size:
+                print(f'File {file_name} not complete')
                 request = (f'file exists, size: {bytes_exist}\n'
                            f'Rewrite/Append? (R/A)').encode()
                 connection.send(request)
@@ -109,8 +120,11 @@ def data_receiver(connection: socket.socket):
                 if data.decode('uft-8') in 'Aa':
                     append_flag = True
 
+            print('sending READY')
             connection.send(b'READY')
         else:
+            if not data:
+                break
             if len(data) and len(data) < CHUNK_SIZE or len(buffer) == file_size:
                 buffer += data
                 write_file(buffer, file_name, FILES_PATH, append_flag)
@@ -121,7 +135,7 @@ def data_receiver(connection: socket.socket):
 
 def data_sender(connection: socket.socket, file_name: str) -> int:
     """
-
+    Sends a files to client
     :param connection: socket   -- connection: socket of client data exchange
     :param file_name: str       -- name of file to send
     :return: int: bytes_sent    -- amount of bytes successfully sent

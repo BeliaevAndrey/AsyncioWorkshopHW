@@ -1,4 +1,5 @@
 import socket
+import traceback
 
 from util import *
 
@@ -38,9 +39,9 @@ def send(host_addr: str, host_port: int):
                 data_to_send = f'COMMAND:{command}'.encode()
                 client_socket.send(data_to_send)
             case '2':  # upload file
-                command_to_send = f'COMMAND:{command}'.encode()
-                print(f'{command_to_send = }')
-                client_socket.send(command_to_send)
+                # command_to_send = f'COMMAND:{command}'.encode()
+                # print(f'{command_to_send = }')
+                # client_socket.send(command_to_send)
                 break
             case '3':  # download file
                 if not server_file_list:
@@ -61,10 +62,8 @@ def send(host_addr: str, host_port: int):
     # ===== upload file section =====
     if command == '2':
         file_path = get_path()
-        # file_path = '/home/andrew/old_home/Documents/Sviridov_Workshop/2024/AsyncioHW/hw001/pt03_simple/files_to_send'
         print_files(file_path)
         file_name = get_filename()
-        # file_name = 'text-file_tst.txt'
 
         while True:
             try:
@@ -76,19 +75,37 @@ def send(host_addr: str, host_port: int):
             except Exception as exc:
                 print(f'{exc.__class__.__name__}: {exc}')
 
+        command_to_send = f'COMMAND:{command}:{file_name}'.encode()
+
         file_string = f'FILE:{file_name}:{str(len(data_to_send))}'.encode()
 
         print(f'{file_string=}')
         if not short_answer():
             return
-
+        client_socket.send(command_to_send)
         client_socket.send(file_string)
 
-        print(client_socket.recv(10))
+        try:
+            client_socket.settimeout(2)
+            answer = client_socket.recv(CHUNK_SIZE)
+            print(answer)
+            if not answer == b'READY':
+                print(answer.decode())
+                print('I send \'y\'.')
+                client_socket.send(b'y')
+                client_socket.recv(CHUNK_SIZE)
+        except TimeoutError as exc:
+            traceback.print_exc()
+            traceback.print_tb(exc.__traceback__)
+            return
+
+        # print(client_socket.recv(10))
 
         send_limit = data_to_send.__sizeof__()
 
         for i in range(0, send_limit, CHUNK_SIZE):
+            # if short_answer('Crash test?'):
+            #     crash_test(client_socket)
             portion = data_to_send[i:i + CHUNK_SIZE]
             client_socket.send(portion)
 
@@ -103,8 +120,13 @@ def send(host_addr: str, host_port: int):
         print(file_string)
         if not short_answer():
             return
+
         client_socket.send(b'READY')
+
         file_size = int(file_string[-1])
+
+        if short_answer('Crash test?'):
+            crash_test(client_socket)
 
         while True:
             data = client_socket.recv(CHUNK_SIZE)
@@ -120,9 +142,9 @@ def send(host_addr: str, host_port: int):
         client_socket.close()
 
 
-def short_answer() -> bool:
+def short_answer(question: str = 'correct?') -> bool:
     while True:
-        answer = input("correct? (y/n): ")
+        answer = input(f"{question} (y/n): ")
         if answer in 'Nn':
             return False
         if answer in 'Yy':
@@ -148,6 +170,13 @@ def read_int(lim: int):
             return num
         print("Wrong input. Try again.")
 
+
+def crash_test(client_socket):
+    client_socket.recv(CHUNK_SIZE)
+    client_socket.recv(CHUNK_SIZE)
+    client_socket.recv(CHUNK_SIZE)
+    client_socket.recv(CHUNK_SIZE)
+    raise SystemError
 
 # =============================================================================
 def starter():
