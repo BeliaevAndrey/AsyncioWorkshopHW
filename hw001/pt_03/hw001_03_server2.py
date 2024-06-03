@@ -12,7 +12,7 @@ MENU = [
     'download file',
     'leave',
 ]
-MENU_STRING = '\n'.join([f'{n:<3} {v}' for n, v in enumerate(MENU, start=1)]).encode()
+MENU_STRING = '\n'.join([f'{n:<3} {v}' for n, v in enumerate(MENU, start=1)])
 
 
 def listener(host_addr: str, host_port: int):
@@ -33,7 +33,7 @@ def listener(host_addr: str, host_port: int):
                     print(f"Received: {data.decode('utf-8')}")
 
                     if data == b'handshake':
-                        connection.send(MENU_STRING)
+                        connection.send(f'MENU:{MENU_STRING}'.encode())
 
                     elif data.startswith(b'COMMAND:'):
                         command_num, *command_suf = data.decode('utf-8').split(':')[1:]
@@ -44,7 +44,9 @@ def listener(host_addr: str, host_port: int):
                             case '2':  # upload
                                 data_receiver(connection)
                             case '3':  # download
-                                pass
+                                if not command_suf:
+                                    send_file_list(connection)
+                                data_sender(connection, *command_suf)
                             case '4':  # leave
                                 connection.close()
                                 break
@@ -64,16 +66,19 @@ def listener(host_addr: str, host_port: int):
                 connection.close()
 
 
-def send_file_list(connection: socket.socket) -> None:
+def send_file_list(connection: socket.socket) -> list[str]:
     """ Send file list to client """
-    f_list = '\n'.join(get_file_list(FILES_PATH, False))
-    connection.send(f_list.encode())
+    file_list = get_file_list(FILES_PATH, False)
+    files_string = '\n'.join(file_list)
+    files_string = f'FILE_LIST:{files_string}'
+    connection.send(files_string.encode())
+    return file_list
 
 
 def data_receiver(connection: socket.socket):
     """
     A function to upload a file form client.
-    :param connection: socket of client data exchange
+    :param connection: -- socket of client data exchange
     :return: ...
     """
     buffer: bytes = b''
@@ -114,8 +119,33 @@ def data_receiver(connection: socket.socket):
                 buffer += data
 
 
-def data_sender():
-    pass
+def data_sender(connection: socket.socket, file_name: str) -> int:
+    """
+
+    :param connection: socket   -- connection: socket of client data exchange
+    :param file_name: str       -- name of file to send
+    :return: int: bytes_sent    -- amount of bytes successfully sent
+    """
+    bytes_sent: int = 0
+
+    file_path, file_size = get_file_path_size(FILES_PATH, file_name)
+
+    file_string = f'FILE_STRING:{file_name}:{file_size}'.encode()
+
+    connection.send(file_string)
+    confirm = connection.recv(CHUNK_SIZE)
+    if confirm != b'READY':
+        return 0
+
+    with open(file_path, 'rb') as f_in:
+        data_to_send = f_in.read()
+
+    for i in range(0, file_size, CHUNK_SIZE):
+        portion = data_to_send[i:i + CHUNK_SIZE]
+        bytes_sent += len(portion)
+        connection.send(portion)
+
+    return bytes_sent
 
 
 def check_if_present(file_name: str) -> int:

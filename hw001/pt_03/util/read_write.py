@@ -1,9 +1,12 @@
+""" Utility operations """
+
 import os
 import re
 
 __all__ = [
     'read_file', 'write_file', 'get_filename',
-    'get_path', 'print_files'
+    'get_path', 'print_files', 'get_file_list',
+    'get_file_path_size',
 ]
 
 
@@ -24,23 +27,32 @@ def read_file(file_name: str, file_dir: str = '.') -> bytes:
     return data
 
 
-def write_file(data: bytes, file_name: str, file_dir: str = '.') -> None:
+def write_file(data: bytes,
+               file_name: str,
+               file_dir: str = '.',
+               append_flag: bool = False) -> None:
     """
         Write (NB!) a file to disk
-        :param data:      bytes -- a data pack to write
-        :param file_name: str   -- file name
-        :param file_dir:  str   -- path to file, default = '.'
+        :param data:      bytes     -- a data pack to write
+        :param file_name: str       -- file name
+        :param file_dir:  str       -- path to file, default = '.'
+        :param append_flag: bool    -- open for write of append
         :return None
         """
+    # write_mode = ['wb', 'ab'][append_flag]
     fullpath = os.path.abspath(file_dir)
     if not os.path.isdir(fullpath):
         print(f"Directory not found. Creating!\n{fullpath}")
         os.makedirs(fullpath)
-        # raise NotADirectoryError
     fullpath = os.path.join(fullpath, file_name)
 
-    with open(fullpath, 'wb') as file_out:
-        file_out.write(data)
+    if append_flag:
+        with open(fullpath, 'ab') as file_out:
+            file_out.write(data)
+    else:
+        with open(fullpath, 'wb') as file_out:
+            file_out.write(data)
+
     print(f'file {file_name} is written to disk')
 
 
@@ -81,7 +93,6 @@ def print_files(dir_path: str) -> None:
         print(file)
 
 
-# ========== Read disk ==========
 def get_file_list(path: str, absolute: bool = True) -> list[str] | None:
     """ Returns file list (absolute paths) """
 
@@ -90,5 +101,13 @@ def get_file_list(path: str, absolute: bool = True) -> list[str] | None:
         print('Not a directory!')
         return
     if absolute:
-        return [*map(os.path.abspath, os.listdir(path))]
+        return [*map(lambda x: os.path.join(path, x), os.listdir(path))]
     return os.listdir(path)[:]
+
+
+def get_file_path_size(path, file_name: str) -> tuple[str, int] | None:
+    for file in get_file_list(path, False):
+        if file == file_name:
+            path = os.path.join(path, file_name)
+            size = os.path.getsize(path)
+            return path, size
