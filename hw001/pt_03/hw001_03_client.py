@@ -21,7 +21,6 @@ def send(host_addr: str, host_port: int):
     client_socket = socket.socket()
     client_socket.connect((host_addr, host_port))
     client_socket.send(data_to_send)
-    data_to_send = b''  # clear data at this stage
 
     while True:
         answer = client_socket.recv(CHUNK_SIZE)
