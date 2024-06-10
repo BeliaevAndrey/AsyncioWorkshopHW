@@ -1,3 +1,4 @@
+import pprint
 import socket
 import select
 import time
@@ -46,13 +47,14 @@ def listener(host_addr: str, host_port: int):
                     print(f"Connection: {addr}")
                     client_sock.setblocking(False)
                     inputs.append(client_sock)
-                    clients[client_sock] = {'addr': addr, 'data': b'', 'result': None}
+                    clients[client_sock] = {'addr': addr, 'data': b'', 'result': ''}
                 else:
                     try:
                         data = sck.recv(CHUNK_SIZE)
                         if data:
                             print(f"Have: >>{data}<< bytes from {clients[sck]['addr']}")
                             clients[sck]['data'] += data
+                            check_buffer(clients)
                             if sck not in outputs:
                                 outputs.append(sck)
                         else:
@@ -70,11 +72,8 @@ def listener(host_addr: str, host_port: int):
                             sck.close()
                             del clients[sck]
 
-            check_buffer(clients)
-
             for sck in writable:
                 if sck in clients and clients[sck]['result']:
-                    print(f"result is: {clients[sck]['result']}")
                     try:
                         answer = f"success: {clients[sck]['result']}".encode()
                         sck.sendall(answer)
@@ -82,14 +81,12 @@ def listener(host_addr: str, host_port: int):
                         outputs.remove(sck)
                     except socket.error as err:
                         if err.errno != errno.EWOULDBLOCK:
-                            print(f"Error sending data {err}")
                             outputs.remove(sck)
                             inputs.remove(sck)
                             sck.close()
                             del clients[sck]
 
             for sck in exceptional:
-                print(f"Exceptional conditions for {clients[sck]['addr']}")
                 inputs.remove(sck)
                 if sck in outputs:
                     outputs.remove(sck)
@@ -104,27 +101,21 @@ def listener(host_addr: str, host_port: int):
 
 def check_buffer(questions: dict):
     for key, quest in questions.items():
-        if quest['result'] is None:
-            print(f"CB1: {quest['result'] = }")
+        if not quest['result']:
             quest['result'] = counter(quest['data'].decode('utf-8'))
-        print(f"CB2: {questions = }")
 
 
-def counter(question: str) -> bytes:
+def counter(question: str) -> str:
     proc_amt = 4
     num = ''
     if question.startswith('handshake'):
         num = question.split(' ', 1)[1]
-        print(f"CNT1: {num}")
     if not num.isdigit():
-        return f"success: {question}".encode()
+        return f"{question}"
 
-    num = int(question)
-    print(f"CNT2: {num}")
+    num = int(num)
     answer: int = multiproc_count(num, proc_amt)
-    print(f"CNT3: {answer}")
-
-    return str(answer).encode()
+    return f"{question} -> {str(answer)}"
 
 
 def get_time() -> str:

@@ -23,7 +23,7 @@ def _tear_apart(number: int, parts: int) -> list[(int, int)]:
         if n2 > number:
             portions[-1] = (n1 - part, number + 1)
         check = portions[-1][1]
-    print(f'{portions = }')
+    # print(f'{portions = }')
     return portions
 
 
@@ -45,5 +45,5 @@ def multiproc_count(number: int, parts: int) -> int:
         p.join()
 
     result = sum(arr[:])
-    print(f"\n\nmultiproc_count\n{result=}\n\n")
+    # print(f"\n\nmultiproc_count\n{result=}\n\n")
     return result
