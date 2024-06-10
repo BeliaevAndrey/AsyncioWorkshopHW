@@ -6,8 +6,9 @@ import errno
 from datetime import datetime as _dt
 from typing import TypeAlias
 import traceback
+import os
 
-from util import SLogger
+from util import SLogger, multiproc_count
 
 SOCK: TypeAlias = socket.socket
 CHUNK_SIZE = 1024
@@ -22,8 +23,6 @@ def listener(host_addr: str, host_port: int):
     server_socket.listen()
     server_socket.setblocking(False)
 
-
-
     print(f"Listening at {host_addr}:{host_port}")
 
     clients = {}
@@ -36,7 +35,10 @@ def listener(host_addr: str, host_port: int):
         while True:
             readable, writable, exceptional = select.select(
                 inputs, outputs, inputs, 1)
-            # The optional 4th argument specifies a timeout in seconds;
+
+            if (not readable and not writable and not exceptional) and exit_check():
+                print("Exiting...")
+                break
 
             for sck in readable:
                 if sck is server_socket:
@@ -44,12 +46,12 @@ def listener(host_addr: str, host_port: int):
                     print(f"Connection: {addr}")
                     client_sock.setblocking(False)
                     inputs.append(client_sock)
-                    clients[client_sock] = {'addr': addr, 'data': b''}
+                    clients[client_sock] = {'addr': addr, 'data': b'', 'result': None}
                 else:
                     try:
                         data = sck.recv(CHUNK_SIZE)
                         if data:
-                            print(f"Have: {data} bytes from {clients[sck]['addr']}")
+                            print(f"Have: >>{data}<< bytes from {clients[sck]['addr']}")
                             clients[sck]['data'] += data
                             if sck not in outputs:
                                 outputs.append(sck)
@@ -59,7 +61,6 @@ def listener(host_addr: str, host_port: int):
                             inputs.remove(sck)
                             sck.close()
                             del clients[sck]
-
                     except socket.error as err:
                         if err.errno != errno.EWOULDBLOCK:
                             print(f"Error receiving data: {err}")
@@ -69,10 +70,15 @@ def listener(host_addr: str, host_port: int):
                             sck.close()
                             del clients[sck]
 
+            check_buffer(clients)
+
             for sck in writable:
-                if sck in clients and clients[sck]['data']:
+                if sck in clients and clients[sck]['result']:
+                    print(f"result is: {clients[sck]['result']}")
                     try:
-                        sck.sendall(b'success')
+                        answer = f"success: {clients[sck]['result']}".encode()
+                        sck.sendall(answer)
+                        # sck.sendall(b'success')
                         outputs.remove(sck)
                     except socket.error as err:
                         if err.errno != errno.EWOULDBLOCK:
@@ -96,6 +102,31 @@ def listener(host_addr: str, host_port: int):
         server_socket.close()
 
 
+def check_buffer(questions: dict):
+    for key, quest in questions.items():
+        if quest['result'] is None:
+            print(f"CB1: {quest['result'] = }")
+            quest['result'] = counter(quest['data'].decode('utf-8'))
+        print(f"CB2: {questions = }")
+
+
+def counter(question: str) -> bytes:
+    proc_amt = 4
+    num = ''
+    if question.startswith('handshake'):
+        num = question.split(' ', 1)[1]
+        print(f"CNT1: {num}")
+    if not num.isdigit():
+        return f"success: {question}".encode()
+
+    num = int(question)
+    print(f"CNT2: {num}")
+    answer: int = multiproc_count(num, proc_amt)
+    print(f"CNT3: {answer}")
+
+    return str(answer).encode()
+
+
 def get_time() -> str:
     t_format = '%y-%m-%d %H:%M:%S.%f'
     return _dt.now().strftime(t_format)
@@ -104,7 +135,16 @@ def get_time() -> str:
 def starter():
     host_addr = '127.0.0.1'
     host_port = 8020
+    exit_check()
     listener(host_addr, host_port)
+
+
+def exit_check() -> bool:
+    result = False
+    if 'exit.flag' in os.listdir():
+        os.remove('exit.flag')
+        result = True
+    return result
 
 
 if __name__ == '__main__':

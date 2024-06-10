@@ -2,6 +2,8 @@ from multiprocessing import Process, Array as MPArr     # , Pipe
 # from time import time_ns
 
 __all__ = ['multiproc_count', ]
+
+
 def _gen_counter_mp(start: int, end: int, arr: MPArr, index: int):
     result = sum((i for i in range(start, end)))
     arr[index] = result
@@ -25,7 +27,7 @@ def _tear_apart(number: int, parts: int) -> list[(int, int)]:
     return portions
 
 
-def multiproc_count(number: int, parts: int):
+def multiproc_count(number: int, parts: int) -> int:
     arr = MPArr('Q', [0] * parts)
     portions = _tear_apart(number, parts)
     processes = []
@@ -43,4 +45,5 @@ def multiproc_count(number: int, parts: int):
         p.join()
 
     result = sum(arr[:])
+    print(f"\n\nmultiproc_count\n{result=}\n\n")
     return result
