@@ -10,11 +10,13 @@ def server_run():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind((HOST, PORT))
+        # server_socket.setblocking(False)
         server_socket.listen()
         print(f"Server is listening on {HOST}:{PORT}")
 
         while True:
             client_socket, client_address = server_socket.accept()
+            # client_socket.setblocking(False)
             try:
                 print(f"Connected by {client_address}")
                 while True:
